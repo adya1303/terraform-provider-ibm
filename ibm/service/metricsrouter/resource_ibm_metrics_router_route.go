@@ -115,7 +115,7 @@ func ResourceIBMMetricsRouterRouteValidator() *validate.ResourceValidator {
 			ValidateFunctionIdentifier: validate.ValidateRegexpLen,
 			Type:                       validate.TypeString,
 			Required:                   true,
-			Regexp:                     `^[a-zA-Z0-9 -._:]+$`,
+			Regexp:                     `^[a-zA-Z0-9 \-._:]+$`,
 			MinValueLength:             1,
 			MaxValueLength:             1000,
 		},
