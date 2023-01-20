@@ -5,6 +5,7 @@ package metricsrouter_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -67,12 +68,30 @@ func TestAccIBMMetricsRouterSettingsAllArgs(t *testing.T) {
 					testAccCheckIBMMetricsRouterSettingsExists("ibm_metrics_router_settings.metrics_router_settings", conf),
 					resource.TestCheckResourceAttr("ibm_metrics_router_settings.metrics_router_settings", "metadata_region_primary", metadataRegionPrimary),
 					resource.TestCheckResourceAttr("ibm_metrics_router_settings.metrics_router_settings", "private_api_endpoint_only", privateAPIEndpointOnly),
+					resource.TestCheckResourceAttr("ibm_metrics_router_settings.metrics_router_target", "region", metadataRegionPrimary),
 				),
 			},
 			{
 				ResourceName:      "ibm_metrics_router_settings.metrics_router_settings",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccIBMMetricsRouterSettingsNotPermittedTargetRegion(t *testing.T) {
+	metadataRegionPrimary := "us-south"
+	privateAPIEndpointOnly := "false"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acc.TestAccPreCheck(t) },
+		Providers:    acc.TestAccProviders,
+		CheckDestroy: testAccCheckIBMMetricsRouterSettingsDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccCheckIBMMetricsRouterSettingsNotPermittedTargetRegions(metadataRegionPrimary, privateAPIEndpointOnly),
+				ExpectError: regexp.MustCompile("CreateTargetWithContext failed Your request has failed due to the region requested not being permitted."),
 			},
 		},
 	})
@@ -99,6 +118,22 @@ func testAccCheckIBMMetricsRouterSettingsAllArgs(metadataRegionPrimary string, p
 			private_api_endpoint_only = %s
 			default_targets = [ibm_metrics_router_target.metrics_router_target.id]
 		}
+	`, metadataRegionPrimary, privateAPIEndpointOnly)
+}
+
+func testAccCheckIBMMetricsRouterSettingsNotPermittedTargetRegions(metadataRegionPrimary, privateAPIEndpointOnly string) string {
+	return fmt.Sprintf(`
+		resource "ibm_metrics_router_target" "metrics_router_target_instance" {
+			name = "mr-target"
+			destination_crn = "crn:v1:staging:public:sysdig-monitor:us-south:a/11111111111111111111111111111111:22222222-2222-2222-2222-222222222222::"
+			region = "us-south"
+		}
+		resource "ibm_metrics_router_settings" "metrics_router_settings_instance" {
+			metadata_region_primary = "%s"
+			private_api_endpoint_only = %s
+			default_targets = [ibm_metrics_router_target.metrics_router_target_instance.id]
+			permitted_target_regions = ["us-east"]
+		} 
 	`, metadataRegionPrimary, privateAPIEndpointOnly)
 }
 

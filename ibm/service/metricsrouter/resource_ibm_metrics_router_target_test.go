@@ -5,6 +5,7 @@ package metricsrouter_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -81,6 +82,100 @@ func TestAccIBMMetricsRouterTargetAllArgs(t *testing.T) {
 					resource.TestCheckResourceAttr("ibm_metrics_router_target.metrics_router_target_instance", "destination_crn", destinationCRNUpdate),
 					resource.TestCheckResourceAttr("ibm_metrics_router_target.metrics_router_target_instance", "region", regionUpdate),
 				),
+			},
+		},
+	})
+}
+
+func TestAccIBMMetricsRouterTargetNegative(t *testing.T) {
+	name := fmt.Sprintf("tf_name_%d", acctest.RandIntRange(10, 100))
+	destinationCRN := "crn:v1:bluemix:public:sysdig-monitor:us-south:a/11111111111111111111111111111111:22222222-2222-2222-2222-222222222222::"
+	region := "us-south"
+
+	wrongRegion := "Frankfrut"           //A valid by regular expression but no such region exists
+	wrongDestinationCRN := ":::::::::::" // "::::sysdig-monitor::::::" must be a sysdig-monitor instance
+
+	dummyName := "$$dummy name"                           //Any random string that does not match the regular expresson ^[a-zA-Z0-9 \-._:]+$ and 1 ≤ length ≤ 1000
+	dummyDestinationCRN := "$dummy destination CRN #*^()" //Any random string that does not match the regular expresson ^[a-zA-Z0-9 \-._:/]+$ and 3 ≤ length ≤ 1000
+	dummyRegion := "$$dummy region"                       //Any random string that does not match the regular expresson ^[a-zA-Z0-9 \-._:]+$ and 3 ≤ length ≤ 1000
+
+	errorMsg := "should match regexp"
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acc.TestAccPreCheck(t) },
+		Providers:    acc.TestAccProviders,
+		CheckDestroy: testAccCheckIBMMetricsRouterTargetDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(dummyName, destinationCRN, region),
+				ExpectError: regexp.MustCompile(errorMsg),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, dummyDestinationCRN, region),
+				ExpectError: regexp.MustCompile(errorMsg),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, destinationCRN, dummyRegion),
+				ExpectError: regexp.MustCompile(errorMsg),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, destinationCRN, wrongRegion),
+				ExpectError: regexp.MustCompile("CreateTargetWithContext failed Your request has failed because the value of `region` is not valid. Set a valid value in your target request and try again."),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, wrongDestinationCRN, region),
+				ExpectError: regexp.MustCompile("CreateTargetWithContext failed Your request has failed because the value of `target_type` is not valid. Set a valid target type and try again."),
+			},
+		},
+	})
+}
+
+func TestAccIBMMetricsRouterTargetNegativeUpdate(t *testing.T) {
+	var conf metricsrouterv3.Target
+	name := fmt.Sprintf("tf_name_%d", acctest.RandIntRange(10, 100))
+	destinationCRN := "crn:v1:bluemix:public:sysdig-monitor:us-south:a/11111111111111111111111111111111:22222222-2222-2222-2222-222222222222::"
+	region := "us-south"
+
+	wrongRegionUpdate := "Frankfrut"           //A valid by regular expression but no such region exists
+	wrongDestinationCRNUpdate := ":::::::::::" // "::::sysdig-monitor::::::" must be a sysdig-monitor instance
+
+	dummyNameUpdate := "$$dummy name"                           //Any random string that does not match the regular expresson ^[a-zA-Z0-9 \-._:]+$ and 1 ≤ length ≤ 1000
+	dummyDestinationCRNUpdate := "$dummy destination CRN #*^()" //Any random string that does not match the regular expresson ^[a-zA-Z0-9 \-._:/]+$ and 3 ≤ length ≤ 1000
+	dummyRegionUpdate := "$$dummy region"                       //Any random string that does not match the regular expresson ^[a-zA-Z0-9 \-._:]+$ and 3 ≤ length ≤ 1000
+
+	errorMsg := "should match regexp"
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acc.TestAccPreCheck(t) },
+		Providers:    acc.TestAccProviders,
+		CheckDestroy: testAccCheckIBMMetricsRouterTargetDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckIBMMetricsRouterTargetConfig(name, destinationCRN, region),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckIBMMetricsRouterTargetExists("ibm_metrics_router_target.metrics_router_target_instance", conf),
+					resource.TestCheckResourceAttr("ibm_metrics_router_target.metrics_router_target_instance", "name", name),
+					resource.TestCheckResourceAttr("ibm_metrics_router_target.metrics_router_target_instance", "destination_crn", destinationCRN),
+					resource.TestCheckResourceAttr("ibm_metrics_router_target.metrics_router_target_instance", "region", region),
+				),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(dummyNameUpdate, destinationCRN, region),
+				ExpectError: regexp.MustCompile(errorMsg),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, dummyDestinationCRNUpdate, region),
+				ExpectError: regexp.MustCompile(errorMsg),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, destinationCRN, dummyRegionUpdate),
+				ExpectError: regexp.MustCompile(errorMsg),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, destinationCRN, wrongRegionUpdate),
+				ExpectError: regexp.MustCompile("CreateTargetWithContext failed Your request has failed because the value of `region` is not valid. Set a valid value in your target request and try again."),
+			},
+			{
+				Config:      testAccCheckIBMMetricsRouterTargetConfig(name, wrongDestinationCRNUpdate, region),
+				ExpectError: regexp.MustCompile("CreateTargetWithContext failed Your request has failed because the value of `target_type` is not valid. Set a valid target type and try again."),
 			},
 		},
 	})

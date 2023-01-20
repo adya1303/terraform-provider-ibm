@@ -52,14 +52,16 @@ func ResourceIBMMetricsRouterRoute() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"operand": &schema.Schema{
-										Type:        schema.TypeString,
-										Required:    true,
-										Description: "Part of CRN that can be compared with values.",
+										Type:         schema.TypeString,
+										Required:     true,
+										ValidateFunc: validate.InvokeValidator("ibm_metrics_router_route", "operand"),
+										Description:  "Part of CRN that can be compared with values.",
 									},
 									"operator": &schema.Schema{
-										Type:        schema.TypeString,
-										Required:    true,
-										Description: "The operation to be performed between operand and the provided values. 'is' to be used with one value and 'in' can support upto 20 values in the array.",
+										Type:         schema.TypeString,
+										Required:     true,
+										ValidateFunc: validate.InvokeValidator("ibm_metrics_router_route", "operator"),
+										Description:  "The operation to be performed between operand and the provided values. 'is' to be used with one value and 'in' can support upto 20 values in the array.",
 									},
 									"value": &schema.Schema{
 										Type:        schema.TypeList,
@@ -118,6 +120,24 @@ func ResourceIBMMetricsRouterRouteValidator() *validate.ResourceValidator {
 			Regexp:                     `^[a-zA-Z0-9 -._:]+$`,
 			MinValueLength:             1,
 			MaxValueLength:             1000,
+		},
+	)
+	validateSchema = append(validateSchema,
+		validate.ValidateSchema{
+			Identifier:                 "operand",
+			ValidateFunctionIdentifier: validate.ValidateAllowedStringValue,
+			Type:                       validate.TypeString,
+			Required:                   true,
+			AllowedValues:              "location, service_name, service_instance, resource_type, resource",
+		},
+	)
+	validateSchema = append(validateSchema,
+		validate.ValidateSchema{
+			Identifier:                 "operator",
+			ValidateFunctionIdentifier: validate.ValidateAllowedStringValue,
+			Type:                       validate.TypeString,
+			Required:                   true,
+			AllowedValues:              "is, in",
 		},
 	)
 
