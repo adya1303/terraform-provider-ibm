@@ -106,6 +106,41 @@ func TestAccIBMMetricsRouterRouteAllArgs(t *testing.T) {
 	})
 }
 
+func TestAccIBMMetricsRouterRouteNoFilter(t *testing.T) {
+	var conf metricsrouterv3.Route
+	name := fmt.Sprintf("tf_name_%d", acctest.RandIntRange(10, 100))
+	operand := "location"
+	operator := "is"
+	value := []string{"us-east"}
+	nameUpdate := fmt.Sprintf("tf_name_%d", acctest.RandIntRange(10, 100))
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acc.TestAccPreCheck(t) },
+		Providers:    acc.TestAccProviders,
+		CheckDestroy: testAccCheckIBMMetricsRouterRouteDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckIBMMetricsRouterRouteConfigNoFilter(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckIBMMetricsRouterRouteExists("ibm_metrics_router_route.metrics_router_route_instance", conf),
+					resource.TestCheckResourceAttr("ibm_metrics_router_route.metrics_router_route_instance", "name", name),
+				),
+			},
+			{
+				Config: testAccCheckIBMMetricsRouterRouteConfigAllArgs("mr-target", "us-south", nameUpdate, operand, operator, value),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckIBMMetricsRouterRouteExists("ibm_metrics_router_route.metrics_router_route_instance", conf),
+					resource.TestCheckResourceAttr("ibm_metrics_router_route.metrics_router_route_instance", "name", nameUpdate),
+					resource.TestCheckResourceAttr("ibm_metrics_router_route.metrics_router_route_instance", "rules.0.inclusion_filters.0.operand", operand),
+					resource.TestCheckResourceAttr("ibm_metrics_router_route.metrics_router_route_instance", "rules.0.inclusion_filters.0.operator", operator),
+					resource.TestCheckResourceAttr("ibm_metrics_router_route.metrics_router_route_instance", "rules.0.inclusion_filters.0.value.0", value[0]),
+					resource.TestCheckResourceAttrPair("ibm_metrics_router_target.metrics_router_target_instance", "id", "ibm_metrics_router_route.metrics_router_route_instance", "rules.0.target_ids.0"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccIBMMetricsRouterRouteNegative(t *testing.T) {
 	name := fmt.Sprintf("tf_name_%d", acctest.RandIntRange(10, 100))
 	operand := "location"
@@ -238,6 +273,23 @@ func TestAccIBMMetricsRouterRouteRuleOR(t *testing.T) {
 			},
 		},
 	})
+}
+
+func testAccCheckIBMMetricsRouterRouteConfigNoFilter(name string) string {
+	return fmt.Sprintf(`
+		resource "ibm_metrics_router_target" "metrics_router_target_instance" {
+			name = "mr-target"
+			destination_crn = "crn:v1:bluemix:public:sysdig-monitor:us-south:a/0be5ad401ae913d8ff665d92680664ed:22222222-2222-2222-2222-222222222222::"
+			region = "us-south"
+		}
+
+		resource "ibm_metrics_router_route" "metrics_router_route_instance" {
+			name = "%s"
+			rules {
+				target_ids = [ ibm_metrics_router_target.metrics_router_target_instance.id ]
+			}
+		}
+	`, name)
 }
 
 func testAccCheckIBMMetricsRouterRouteConfigBasic(name, filter_value string) string {

@@ -47,7 +47,7 @@ func ResourceIBMMetricsRouterRoute() *schema.Resource {
 						},
 						"inclusion_filters": &schema.Schema{
 							Type:        schema.TypeList,
-							Required:    true,
+							Optional:    true,
 							Description: "A list of conditions to be satisfied for routing metrics to pre-defined target.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
@@ -117,7 +117,7 @@ func ResourceIBMMetricsRouterRouteValidator() *validate.ResourceValidator {
 			ValidateFunctionIdentifier: validate.ValidateRegexpLen,
 			Type:                       validate.TypeString,
 			Required:                   true,
-			Regexp:                     `^[a-zA-Z0-9 -._:]+$`,
+			Regexp:                     `^[a-zA-Z0-9 \-._:]+$`,
 			MinValueLength:             1,
 			MaxValueLength:             1000,
 		},
